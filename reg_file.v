@@ -8,8 +8,8 @@ output [7:0] rs1_data, rs2_data
     );
         reg [7:0] memory [0:7];
            
-               assign rs1_data = memory[rs1_addr];
-               assign rs2_data = memory[rs2_addr];
+               assign rs1_data = (rs1_addr == 3'b0) ? 8'b0 : memory[rs1_addr];
+               assign rs2_data = (rs2_addr == 3'b0) ? 8'b0 : memory[rs2_addr];
          
      always @(posedge clk)
         begin
