@@ -9,6 +9,6 @@ module instr_mem(
         
         initial
          begin
-            $readmemb ("program.txt", ROM);
+            $readmemh ("program_out.hex", ROM);
          end
 endmodule
