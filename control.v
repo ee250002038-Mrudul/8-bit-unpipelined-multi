@@ -4,14 +4,14 @@ module control(
 input clk, reset,
 input [23:0] instruction,
 input zero_flag, sign_flag,
-output reg pc_write_enable, reg_write_enable, mem_write_enable, mem_to_reg,branch_enable,
+output reg pc_write_enable, reg_write_enable, mem_write_enable, mem_to_reg, alu_src,
+output reg [1:0] pc_src, 
 output reg ir_write_1,ir_write_2,ir_write_3,
 output reg [2:0] alu_control
     );
     
     reg [3:0] next_state, current_state;
     
-    //for state
     localparam FETCH1   = 4'b0000;
     localparam DECODE   = 4'b0001;
     localparam FETCH2   = 4'b0010;
@@ -20,7 +20,6 @@ output reg [2:0] alu_control
     localparam MEMORY   = 4'b0101;
     localparam WRITEBACK = 4'b0110;
     
-    //for alu
     localparam LOAD  = 5'b00001;
     localparam STORE = 5'b00010;
     localparam ADDI = 5'b00011;
@@ -37,7 +36,7 @@ output reg [2:0] alu_control
     localparam SLL = 5'b01101;
     localparam JMP = 5'b01110;
     localparam HLT = 5'b11111;
-    localparam JMPI = 5'b0111;
+    localparam JMPI = 5'b01111;
     localparam BEQ = 5'b10000;
     localparam BNE = 5'b10001;
     localparam BLT = 5'b10010;
@@ -52,14 +51,20 @@ output reg [2:0] alu_control
     
         always @(*)
             begin
-                pc_write_enable = 0;
-                reg_write_enable = 0;
-                mem_write_enable = 0;
+                if(instruction[23:19] == ADDI || instruction[23:19] == LOAD || instruction[23:19] == STORE)
+                    alu_src = 1'b1;
+                else
+                    alu_src = 1'b0;
+                    
+                 pc_write_enable = 0;
+                 reg_write_enable = 0;
+                 mem_write_enable = 0;
                  ir_write_1 = 0;
                  ir_write_2 = 0;
                  ir_write_3 = 0;
-                 branch_enable = 0;
                  mem_to_reg = 0;
+                 
+                 pc_src = 2'b00; 
                 
                 case(current_state)
                     FETCH1: begin
@@ -112,16 +117,47 @@ output reg [2:0] alu_control
                              
                     MEMORY: begin
                                 case(instruction[23:19])
-                                    STORE: begin  mem_write_enable = 1;
-                                                    next_state = FETCH1;
-                                            end 
-                                    JMP: begin branch_enable = 1;
+                                    STORE: begin  
+                                                mem_write_enable = 1;
                                                 next_state = FETCH1;
-                                         end
-                                    BEQ: begin
-                                            if (zero_flag == 1'b1) branch_enable = 1;
+                                            end 
+                                            
+                                    JMP: begin 
+                                            pc_src = 2'b10;       
+                                            pc_write_enable = 1;  
                                             next_state = FETCH1;
-                                            end   
+                                         end
+                                         
+                                    JMPI: begin
+                                            pc_src = 2'b11;       
+                                            pc_write_enable = 1;  
+                                            next_state = FETCH1;
+                                          end
+                                          
+                                    BEQ: begin
+                                            if (zero_flag == 1'b1) begin
+                                                pc_src = 2'b01;       
+                                                pc_write_enable = 1;  
+                                            end
+                                            next_state = FETCH1;
+                                         end   
+                                         
+                                    BNE: begin
+                                            if (zero_flag == 1'b0) begin
+                                                pc_src = 2'b01;
+                                                pc_write_enable = 1;
+                                            end
+                                            next_state = FETCH1;
+                                         end
+                                         
+                                    BLT: begin
+                                            if (sign_flag == 1'b1) begin 
+                                                pc_src = 2'b01;
+                                                pc_write_enable = 1;
+                                            end
+                                            next_state = FETCH1;
+                                         end
+                                         
                                      default: next_state = WRITEBACK;       
                                  endcase
                             end
