@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 
 module datapath(
-    input clk, reset, pc_write_enable, reg_write_enable,mem_to_reg,mem_write_enable,alu_src,
+    input clk, reset, pc_write_enable, reg_write_enable,mem_to_reg,mem_write_enable,alu_src,sp_enable_add, sp_enable_sub,
     input ir_write_1,ir_write_2,ir_write_3,
     input [1:0] pc_src, 
     input [2:0] alu_control,
@@ -16,9 +16,12 @@ module datapath(
         wire [7:0] mem_read_data;
         wire [7:0] rom_data;
         wire [7:0] pc_in;
+        wire [7:0] stpo;
         wire [7:0] imm;
         wire [7:0] actual_alu_input_b;
         wire [7:0] branch_target;
+        wire [7:0] final_address;
+        wire [7:0] final_write_data;
         
         assign write_data = (mem_to_reg == 1'b1) ? mem_read_data : alu_result;
         assign branch_target = pc_instmem + imm;
@@ -26,10 +29,12 @@ module datapath(
         assign pc_in = (pc_src == 2'b11) ? imm :
                        (pc_src == 2'b10) ? rs1_data :       
                        (pc_src == 2'b01) ? branch_target :        
-                       (pc_instmem + 8'd1);                 
+                       (pc_instmem + 8'd01);                 
                        
+        assign  final_address = (instruction[23:19] == 5'b00100 || instruction[23:19] == 5'b00101 ||instruction[23:19] == 5'b00110 || instruction[23:19] == 5'b00111 ) ? stpo : alu_result;           
+        assign final_write_data = (instruction[23:19] == 5'b00110)? pc_instmem : rs2_data;
         reg [2:0] decoded_rs1;
-reg [2:0] decoded_rs2;
+        reg [2:0] decoded_rs2;
 
 
 always @(*) begin
@@ -39,7 +44,7 @@ always @(*) begin
 
     case(instruction[23:19]) 
         5'b00100, 
-        5'b00110, 
+        5'b00110,
         5'b01110: decoded_rs1 = instruction[18:16];
          
         5'b00010,
@@ -50,6 +55,8 @@ always @(*) begin
             decoded_rs1 = instruction[18:16];
             decoded_rs2 = instruction[15:13];
         end
+        
+        5'b00100 : decoded_rs2 = instruction[18:16];
     endcase
 end
 
@@ -57,7 +64,7 @@ assign rs1_addr = decoded_rs1;
 assign rs2_addr = decoded_rs2;
 
 assign rd_addr  = instruction[18:16];
-assign imm = instruction[7:0];
+assign imm = (instruction[23:19] == 5'b00111) ? mem_read_data: instruction[7:0];
 assign actual_alu_input_b = alu_src ? imm : rs2_data; 
 
     pc pcount(
@@ -79,7 +86,8 @@ assign actual_alu_input_b = alu_src ? imm : rs2_data;
     );
     
     data_mem RAM(
-        .clk(clk), .mem_write_enable(mem_write_enable), .address(alu_result), .write_data(rs2_data), .read_data(mem_read_data)
+        .clk(clk), .mem_write_enable(mem_write_enable), .address(final_address), .write_data(final_write_data),
+         .read_data(mem_read_data)
     );
     
     inst_reg IR(
@@ -88,4 +96,8 @@ assign actual_alu_input_b = alu_src ? imm : rs2_data;
     .rom_data(rom_data), 
     .full_instruction(instruction)
 );
+
+    SP StackPointer(
+    .clk(clk), .reset(reset), .SP_address(stpo), .sp_enable_add(sp_enable_add), .sp_enable_sub(sp_enable_sub)
+    );
 endmodule
