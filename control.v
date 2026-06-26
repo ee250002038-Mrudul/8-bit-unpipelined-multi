@@ -119,11 +119,11 @@ output reg [2:0] alu_control
                              end
                              
                     MEMORY: begin
-                                case(instruction[23:19])
-                                    STORE: begin  
-                                                mem_write_enable = 1;
-                                                next_state = FETCH1;
-                                            end 
+                        case(instruction[23:19])
+                            STORE: begin  
+                                mem_write_enable = 1;
+                                next_state = FETCH1;
+                             end 
                                             
                                     JMP: begin 
                                             pc_src = 2'b10;       
@@ -190,18 +190,17 @@ output reg [2:0] alu_control
                             
                     WRITEBACK: begin
                         if (instruction[23:19] == RET) begin
-                                    pc_src = 2'b11;       
-                                    pc_write_enable = 1; 
-                                 next_state = FETCH1;
-                             end else begin
-                                 reg_write_enable = 1; 
-                                 if (instruction[23:19] == LOAD || instruction[23:19] == POP) begin
-                                     mem_to_reg = 1;
-                                        end
-                                        next_state = FETCH1;
-                                             end
-                                         end                                
-                   endcase
-                    
+                            pc_src = 2'b11;       
+                            pc_write_enable = 1; 
+                            next_state = FETCH1;
+                        end else begin
+                             reg_write_enable = 1;
+                             if (instruction[23:19] == LOAD || instruction[23:19] == POP) begin
+                                  mem_to_reg = 1;
+                             end
+                             next_state = FETCH1;
+                         end
+                       end                                
+                   endcase   
             end 
 endmodule
