@@ -31,7 +31,7 @@ module datapath(
                        (pc_src == 2'b01) ? branch_target :        
                        (pc_instmem + 8'd01);                 
                        
-        assign  final_address = (instruction[23:19] == 5'b00100 || instruction[23:19] == 5'b00101 ||instruction[23:19] == 5'b00110 || instruction[23:19] == 5'b00111 ) ? stpo : alu_result;           
+        assign final_address = (instruction[23:19] == 5'b00100 || instruction[23:19] == 5'b00101 ||instruction[23:19] == 5'b00110 || instruction[23:19] == 5'b00111 ) ? stpo : alu_result;           
         assign final_write_data = (instruction[23:19] == 5'b00110)? pc_instmem : rs2_data;
         reg [2:0] decoded_rs1;
         reg [2:0] decoded_rs2;
@@ -43,7 +43,6 @@ always @(*) begin
     decoded_rs2 = instruction[12:10];
 
     case(instruction[23:19]) 
-        5'b00100, 
         5'b00110,
         5'b01110: decoded_rs1 = instruction[18:16];
          
