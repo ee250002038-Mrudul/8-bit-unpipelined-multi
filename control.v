@@ -4,7 +4,7 @@ module control(
 input clk, reset,
 input [23:0] instruction,
 input zero_flag, sign_flag,
-output reg pc_write_enable, reg_write_enable, mem_write_enable, mem_to_reg, alu_src,
+output reg pc_write_enable, reg_write_enable, mem_write_enable, mem_to_reg, alu_src,sp_enable_add,sp_enable_sub,
 output reg [1:0] pc_src, 
 output reg ir_write_1,ir_write_2,ir_write_3,
 output reg [2:0] alu_control
@@ -63,6 +63,8 @@ output reg [2:0] alu_control
                  ir_write_2 = 0;
                  ir_write_3 = 0;
                  mem_to_reg = 0;
+                 sp_enable_add = 0;
+                 sp_enable_sub = 0;
                  
                  pc_src = 2'b00; 
                 
@@ -75,7 +77,8 @@ output reg [2:0] alu_control
                             
                     DECODE: begin
                                 case(instruction[23:19])
-                                  NOP,PUSH,POP,CALL,RET,JMP,HLT: next_state = EXECUTE;
+                                  NOP,JMP,HLT: next_state = EXECUTE;
+                                  PUSH,POP,CALL,RET: next_state = MEMORY;
                                   default: next_state = FETCH2;
                                   endcase
                             end
@@ -158,21 +161,46 @@ output reg [2:0] alu_control
                                             next_state = FETCH1;
                                          end
                                          
+                                     PUSH: begin
+                                            sp_enable_sub = 1;
+                                            mem_write_enable = 1; 
+                                            next_state = FETCH1;                                           
+                                     end
+                                     
+                                     POP: begin
+                                            sp_enable_add = 1;
+                                            next_state = WRITEBACK;
+                                     end
+                                        
+                                     CALL: begin
+                                            pc_src = 2'b10;
+                                            sp_enable_sub = 1;
+                                            pc_write_enable = 1;
+                                            mem_write_enable = 1;
+                                            next_state = FETCH1;
+                                     end
+                                     
+                                     RET: begin
+                                             sp_enable_add = 1;
+                                             next_state = WRITEBACK;
+                                     end   
                                      default: next_state = WRITEBACK;       
                                  endcase
                             end
                             
                     WRITEBACK: begin
-                                  reg_write_enable = 1;
-                                  if (instruction[23:19] == LOAD) begin
-                                       mem_to_reg = 1;
-                                   end
-                                  next_state = FETCH1;
-                                end   
-                     default: begin
-                                next_state = FETCH1;
-                                end
-                                
+                        if (instruction[23:19] == RET) begin
+                                    pc_src = 2'b11;       
+                                    pc_write_enable = 1; 
+                                 next_state = FETCH1;
+                             end else begin
+                                 reg_write_enable = 1; 
+                                 if (instruction[23:19] == LOAD || instruction[23:19] == POP) begin
+                                     mem_to_reg = 1;
+                                        end
+                                        next_state = FETCH1;
+                                             end
+                                         end                                
                    endcase
                     
             end 
